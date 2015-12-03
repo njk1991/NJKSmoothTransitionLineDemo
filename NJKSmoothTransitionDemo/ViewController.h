@@ -8,8 +8,11 @@
 
 #import <UIKit/UIKit.h>
 
-@interface ViewController : UIViewController
+@interface NJKDrawingNode : NSObject
 
+@end
+
+@interface ViewController : UIViewController
 
 @end
 

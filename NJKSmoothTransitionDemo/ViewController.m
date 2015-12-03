@@ -8,23 +8,33 @@
 
 #import "ViewController.h"
 
+@interface NJKDrawingNode ()<NSCopying>
+
+@property (assign, nonatomic) CGPoint point;
+@property (assign, nonatomic) CGFloat lineWidth;
+@property (assign, nonatomic) CGFloat speed;
+@property (assign, nonatomic) NSTimeInterval timestamp;
+
+@end
+
+@implementation NJKDrawingNode
+
+- (id)copyWithZone:(nullable NSZone *)zone {
+    NJKDrawingNode *node = [[[self class] alloc] init];
+    node.point = self.point;
+    node.lineWidth = self.lineWidth;
+    node.speed = self.speed;
+    node.timestamp = self.timestamp;
+    return node;
+}
+
+@end
+
 @interface ViewController ()
 
 @property (strong, nonatomic) UIImage *viewImage;
-
-@property (assign, nonatomic) CGPoint startPoint;
-@property (assign, nonatomic) CGPoint endPoint;
-@property (assign, nonatomic) CGPoint fromPoint;
-@property (assign, nonatomic) CGPoint toPoint;
-
-@property (assign, nonatomic) CGFloat startLineWidth;
-@property (assign, nonatomic) CGFloat endLineWidth;
-
-@property (assign, nonatomic) CGPoint currentPoint;
-@property (assign, nonatomic) CGPoint previousPoint;
-@property (assign, nonatomic) CGFloat currentSpeed;
-@property (assign, nonatomic) CGFloat previousSpeed;
-@property (assign, nonatomic) NSTimeInterval previousTimestamp;
+@property (strong, nonatomic) NJKDrawingNode *startNode;
+@property (strong, nonatomic) NJKDrawingNode *endNode;
 
 @end
 
@@ -36,47 +46,50 @@ static CGFloat kSamplingDistance = 0;
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    self.startNode = [[NJKDrawingNode alloc]init];
+    self.endNode = [[NJKDrawingNode alloc]init];
     UIGraphicsBeginImageContextWithOptions(self.view.bounds.size, NO, 0);
 }
 
 - (void)drawLine {
-    CGFloat dX = (self.endPoint.x - self.startPoint.x);
-    CGFloat dY = (self.endPoint.y - self.startPoint.y);
-    
+    CGFloat dX = (self.endNode.point.x - self.startNode.point.x);
+    CGFloat dY = (self.endNode.point.y - self.startNode.point.y);
     CGFloat distance = sqrt(pow(dX, 2) + pow(dY, 2));
-    
-    NSInteger dotCount = distance / (MIN(self.startLineWidth, self.endLineWidth));
-    //        NSInteger dotCount = 10;
+    NSInteger dotCount = distance / (MIN(self.startNode.lineWidth, self.endNode.lineWidth));
     
     CGFloat factor = 1 / ((CGFloat)dotCount + 1);
     CGFloat deltaX = dX * factor;
     CGFloat deltaY = dY * factor;
-    CGFloat deltaWidth = (self.endLineWidth - self.startLineWidth) * factor;
+    CGFloat deltaWidth = (self.endNode.lineWidth - self.startNode.lineWidth) * factor;
+    CGFloat lineWidth = self.startNode.lineWidth;
     
     CGContextRef context = UIGraphicsGetCurrentContext();
     CGContextSetFillColorWithColor(context, [UIColor blackColor].CGColor);
-    CGContextFillEllipseInRect(context, CGRectMake(self.endPoint.x - self.endLineWidth / 2, self.endPoint.y - self.endLineWidth / 2, self.endLineWidth, self.endLineWidth));
+    CGContextFillEllipseInRect(context, CGRectMake(self.endNode.point.x - self.endNode.lineWidth / 2, self.endNode.point.y - self.endNode.lineWidth / 2, self.endNode.lineWidth, self.endNode.lineWidth));
+    
+    CGPoint fromPoint = CGPointZero;
+    CGPoint toPoint = CGPointZero;
     
     for (int i = 0; i < dotCount + 1; i++) {
         if (i == 0) {
-            self.fromPoint = self.startPoint;
+            fromPoint = self.startNode.point;
         }
         if (i == dotCount + 1) {
-            self.toPoint = self.endPoint;
+            toPoint = self.endNode.point;
         }
-        self.toPoint = CGPointMake(self.fromPoint.x + deltaX, self.fromPoint.y + deltaY);
-        self.startLineWidth += deltaWidth;
+        toPoint = CGPointMake(fromPoint.x + deltaX, fromPoint.y + deltaY);
+        lineWidth += deltaWidth;
         CGContextRef context = UIGraphicsGetCurrentContext();
         CGContextSetLineCap(context, kCGLineCapRound);
         CGContextSetLineJoin(context, kCGLineJoinRound);
         CGContextBeginPath(context);
-        CGContextMoveToPoint(context, self.fromPoint.x, self.fromPoint.y);
-        CGContextAddLineToPoint(context, self.toPoint.x,self.toPoint.y);
+        CGContextMoveToPoint(context, fromPoint.x, fromPoint.y);
+        CGContextAddLineToPoint(context, toPoint.x, toPoint.y);
         CGContextSetStrokeColorWithColor(context, [[UIColor redColor] CGColor]);
-        CGContextSetLineWidth(context, self.startLineWidth);
+        CGContextSetLineWidth(context, lineWidth);
         CGContextSetAlpha(context, 0.5f);
         CGContextStrokePath(context);
-        self.fromPoint = self.toPoint;
+        fromPoint = toPoint;
     }
     self.viewImage = UIGraphicsGetImageFromCurrentImageContext();
     self.view.layer.contents = (id)self.viewImage.CGImage;
@@ -85,32 +98,29 @@ static CGFloat kSamplingDistance = 0;
 #pragma mark - TouchesMethods
 
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
-    self.previousTimestamp = event.timestamp;
-    self.endPoint = [[touches anyObject] locationInView:self.view];
-    self.startPoint = self.endPoint;
-    self.startLineWidth = kMaxLineWidth;
-    self.endLineWidth = self.startLineWidth;
+    self.endNode.point = [[touches anyObject] locationInView:self.view];
+    self.endNode.lineWidth = kMaxLineWidth;
+    self.endNode.timestamp = event.timestamp;
+    self.startNode = [self.endNode copy];
     [self drawLine];
 }
 
 - (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
-    self.endPoint = [[touches anyObject] locationInView:self.view];
-    CGFloat dx = ABS(self.endPoint.x - self.startPoint.x);
-    CGFloat dy = ABS(self.endPoint.y - self.startPoint.y);
-    self.currentSpeed = sqrt(pow(dx, 2) + pow(dy, 2)) / (event.timestamp - self.previousTimestamp) / 1000;
+    self.endNode.point = [[touches anyObject] locationInView:self.view];
+    CGFloat dx = ABS(self.endNode.point.x - self.startNode.point.x);
+    CGFloat dy = ABS(self.endNode.point.y - self.startNode.point.y);
+    self.endNode.timestamp = event.timestamp;
+    self.endNode.speed = sqrt(pow(dx, 2) + pow(dy, 2)) / (self.endNode.timestamp - self.startNode.timestamp) / 1000;
     if (dx > kSamplingDistance || dy > kSamplingDistance) {
-        self.endLineWidth = MAX(kMinLineWidth, kMaxLineWidth - self.currentSpeed);
+        self.endNode.lineWidth = MAX(kMinLineWidth, kMaxLineWidth - self.endNode.speed);
         [self drawLine];
-        self.previousTimestamp = event.timestamp;
-        self.startPoint = self.endPoint;
-        self.startLineWidth = self.endLineWidth;
-        self.previousSpeed = self.currentSpeed;
+        self.startNode = [self.endNode copy];
     }
 }
 
 - (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event {
-    if (!CGPointEqualToPoint(self.endPoint, [[touches anyObject] locationInView:self.view])) {
-        self.endPoint = [[touches anyObject] locationInView:self.view];
+    if (!CGPointEqualToPoint(self.endNode.point, [[touches anyObject] locationInView:self.view])) {
+        self.endNode.point = [[touches anyObject] locationInView:self.view];
         [self drawLine];
     }
 }
