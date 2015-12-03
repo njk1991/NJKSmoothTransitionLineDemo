@@ -32,13 +32,10 @@
 
 @interface ViewController ()
 
-@property (strong, nonatomic) UIImage *viewImage;
-//@property (strong, nonatomic) NJKDrawingNode *startNode;
-//@property (strong, nonatomic) NJKDrawingNode *endNode;
-
 @property (assign, nonatomic) CGPoint fromPoint;
 @property (assign, nonatomic) CGPoint toPoint;
 
+@property (strong, nonatomic) UIImage *viewImage;
 @property (strong, nonatomic) NJKDrawingNode *node1;
 @property (strong, nonatomic) NJKDrawingNode *node2;
 @property (strong, nonatomic) NJKDrawingNode *node3;
@@ -48,7 +45,8 @@
 
 @implementation ViewController
 
-static CGFloat kLineFactor = 0.7;
+static CGFloat kAlpha = 1;
+static CGFloat kLineFactor = 1.5;
 static CGFloat kMaxLineWidth = 8;
 static CGFloat kMinLineWidth = 3;
 static CGFloat kSamplingDistance = 10;
@@ -61,7 +59,6 @@ static NSInteger kMinDotCount = 5;
     self.node2 = [[NJKDrawingNode alloc]init];
     self.node3 = [[NJKDrawingNode alloc]init];
     self.node4 = [[NJKDrawingNode alloc]init];
-    
     UIGraphicsBeginImageContextWithOptions(self.view.bounds.size, NO, 0);
 }
 
@@ -85,19 +82,15 @@ static NSInteger kMinDotCount = 5;
         CGFloat t = (CGFloat)i / dotCount;
         // the t value inverted
         CGFloat it = 1.0f - t;
-        
         // calculate blending functions for cubic bspline
         CGFloat b0 = it * it * it / 6.0f;
         CGFloat b1 = (3 * t * t * t - 6 * t * t + 4) / 6.0f;
         CGFloat b2 = (-3 * t * t * t + 3 * t * t + 3 * t + 1) / 6.0f;
         CGFloat b3 =  t * t * t / 6.0f;
-        
         // calculate the x,y and z of the curve point
         CGFloat x = b0 * self.node1.point.x + b1 * self.node2.point.x + b2 * self.node3.point.x + b3 * self.node4.point.x;
-        
         CGFloat y = b0 * self.node1.point.y + b1 * self.node2.point.y + b2 * self.node3.point.y + b3 * self.node4.point.y;
         // specify the point
-        
         if (CGPointEqualToPoint(self.fromPoint, kInitPoint)) {
             self.fromPoint = CGPointMake(x, y);
         }
@@ -111,7 +104,7 @@ static NSInteger kMinDotCount = 5;
         CGContextAddLineToPoint(context, self.toPoint.x, self.toPoint.y);
         CGContextSetStrokeColorWithColor(context, [[UIColor redColor] CGColor]);
         CGContextSetLineWidth(context, lineWidth);
-//        CGContextSetAlpha(context, 0.5f);
+        CGContextSetAlpha(context, kAlpha);
         CGContextStrokePath(context);
         self.fromPoint = self.toPoint;
     }
@@ -139,7 +132,7 @@ static NSInteger kMinDotCount = 5;
     node.timestamp = event.timestamp;
     node.speed = sqrt(pow(dx, 2) + pow(dy, 2)) / (node.timestamp - self.node4.timestamp) / 1000;
     if (dx > kSamplingDistance || dy > kSamplingDistance) {
-        node.lineWidth = MAX(kMinLineWidth, kMaxLineWidth - self.node4.speed * kLineFactor);
+        node.lineWidth = MAX(kMinLineWidth, MIN(kMaxLineWidth, self.node4.lineWidth - (node.speed - self.node4.speed) * kLineFactor));
         [self refreshNodesWithNode:node];
     }
 }
