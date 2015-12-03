@@ -169,6 +169,13 @@ static CGFloat kMaxLineWidth = 10;
 //    UIGraphicsEndImageContext();
 }
 
+- (void)motionBegan:(UIEventSubtype)motion withEvent:(UIEvent *)event {
+    self.viewImage = nil;
+    self.view.layer.contents = nil;
+    CGContextClearRect(UIGraphicsGetCurrentContext(), self.view.bounds);
+    [self.view setNeedsDisplay];
+}
+
 - (void)didReceiveMemoryWarning {
     [super didReceiveMemoryWarning];
     // Dispose of any resources that can be recreated.
