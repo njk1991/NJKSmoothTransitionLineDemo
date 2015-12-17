@@ -47,8 +47,8 @@
 
 static CGFloat kAlpha = 1;
 static CGFloat kLineFactor = 1.5;
-static CGFloat kMaxLineWidth = 8;
-static CGFloat kMinLineWidth = 3;
+static CGFloat kMaxLineWidth = 7;
+static CGFloat kMinLineWidth = 2;
 static CGFloat kSamplingDistance = 10;
 static CGPoint kInitPoint = {-100,-100};
 static NSInteger kMinDotCount = 5;
@@ -141,13 +141,11 @@ static NSInteger kMinDotCount = 5;
     NJKDrawingNode *node = [self.node4 copy];
     node.point = [[touches anyObject] locationInView:self.view];
     
+    [self refreshNodesWithNode:node];
+    [self refreshNodesWithNode:node];
     if (!CGPointEqualToPoint(self.node4.point, node.point)) {
         [self refreshNodesWithNode:node];
-        [self refreshNodesWithNode:node];
-        [self refreshNodesWithNode:node];
     }
-    [self refreshNodesWithNode:node];
-    [self refreshNodesWithNode:node];
 }
 
 - (void)initPoints {
